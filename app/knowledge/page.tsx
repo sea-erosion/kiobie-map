@@ -1,5 +1,6 @@
 // サーバー側で描画される普通のページ（状態もJSも不要）
-export const metadata = { title: "キオビエダシャクとは | 大分 キオビエダシャクマップ" };
+import { pageMeta } from "@/lib/site";
+export const metadata = pageMeta("キオビエダシャクとは", "キオビエダシャクの見分け方（黒紫に黄色い帯の蛾・オレンジ色の幼虫）、イヌマキへの被害、見つけたときの対処法をまとめています。", "/knowledge");
 
 export default function Knowledge() {
   return (
