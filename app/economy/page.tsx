@@ -1,5 +1,6 @@
 import EconomyCharts from "@/components/EconomyCharts";
-export const metadata = { title: "経済損失 | 大分 キオビエダシャクマップ" };
+import { pageMeta } from "@/lib/site";
+export const metadata = pageMeta("経済損失", "キオビエダシャクによるイヌマキ被害の投稿件数の推移と、植え替え費用をもとにした被害額の試算を見られます。", "/economy");
 
 export default function Economy() {
   return (
