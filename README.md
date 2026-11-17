@@ -20,3 +20,18 @@ GitHub に上げて Vercel でインポート。Environment Variables に `.env.
 - Supabase 無料枠は、しばらくアクセスがないと一時停止されることがあります（ダッシュボードから再開）
 - 住所検索・地図は国土地理院（キー不要）。大量アクセスは避ける
 - いたずら投稿は Supabase の管理画面から削除できます
+
+## GitHub Pages版（静的）
+同じコード・同じSupabaseで、GitHub Pages用の静的サイトも作れます。`.github/workflows/pages.yml` が自動でやってくれます。
+1. GitHub のリポジトリ → Settings → **Pages** → Source を **GitHub Actions** にする
+2. Settings → Secrets and variables → Actions → **New repository secret** で次の2つを登録
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+3. `main` に push すると自動でビルド・公開（Actions タブで進み具合が見られる）
+4. 公開先は `https://ユーザー名.github.io/リポジトリ名/`
+
+手元で静的ビルドを試すとき（`out/` フォルダができる）：
+- Mac/Linux: `STATIC_EXPORT=1 npm run build`
+- Windows PowerShell: `$env:STATIC_EXPORT="1"; npm run build`
+
+注意：リポジトリ名が `ユーザー名.github.io` の場合は公開先がルートになるので、workflow の `NEXT_PUBLIC_BASE_PATH` の行を削除してください。
