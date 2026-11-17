@@ -18,6 +18,7 @@ export default function PestMap() {
   const [hits, setHits] = useState<GeoHit[]>([]);
   const [msg, setMsg] = useState("");
   const [ready, setReady] = useState(false);
+  const [open, setOpen] = useState(true); // 操作パネルの開閉（最初は開いている）
 
   // --- 地図まわりの部品（ref＝再描画しても保持される入れ物） ---
   const box = useRef<HTMLDivElement>(null);
@@ -30,7 +31,7 @@ export default function PestMap() {
   const toast = useCallback((t: string) => { setMsg(t); setTimeout(() => setMsg(""), 3000); }, []);
 
   const icon = (cls: string, txt: string) =>
-    L.current!.divIcon({ className: "", html: `<div class="pin ${cls}"><span>${txt}</span></div>`, iconSize: [30, 30], iconAnchor: [15, 30], popupAnchor: [0, -28] });
+    L.current!.divIcon({ className: "", html: `<div class="pin ${cls}"><span>${txt}</span></div>`, iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -34] });
 
   // 黒いピン（これから立てる場所）を置く
   const setDraft = useCallback((lat: number, lng: number, zoom?: number) => {
@@ -53,11 +54,12 @@ export default function PestMap() {
       const leaflet = (await import("leaflet")).default;
       if (dead || !box.current) return;
       L.current = leaflet;
-      const m = leaflet.map(box.current, { minZoom: 8, maxBounds: [[32.4, 130.5], [34.1, 132.5]] }).setView(OITA_CENTER, 9);
+      const m = leaflet.map(box.current, { zoomControl: false, minZoom: 8, maxBounds: [[32.4, 130.5], [34.1, 132.5]] }).setView(OITA_CENTER, 9);
       // 国土地理院タイル（無料・キー不要）
       leaflet.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
         maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
       }).addTo(m);
+      leaflet.control.zoom({ position: "topright" }).addTo(m);
       layer.current = leaflet.layerGroup().addTo(m);
       m.on("click", (e) => setDraft(e.latlng.lat, e.latlng.lng, m.getZoom()));
       map.current = m;
@@ -90,12 +92,14 @@ export default function PestMap() {
     });
   }, [rows, days, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  const closeOnMobile = () => { if (window.matchMedia("(max-width:760px)").matches) setOpen(false); };
+
   // 現在地
   const useGeo = () => {
     if (!navigator.geolocation) return toast("この端末は位置情報に対応していません");
     toast("現在地を取得中…");
     navigator.geolocation.getCurrentPosition(
-      (p) => setDraft(p.coords.latitude, p.coords.longitude),
+      (p) => { setDraft(p.coords.latitude, p.coords.longitude); closeOnMobile(); },
       () => toast("現在地を取得できませんでした。位置情報を許可してください"),
       { enableHighAccuracy: true, timeout: 10000 }
     );
@@ -140,7 +144,12 @@ export default function PestMap() {
 
   return (
     <div className="app">
-      <aside className="side">
+      <aside id="panel" className={"side" + (open ? "" : " closed")}>
+        <button className="toggle" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="panel-body" aria-label={open ? "操作パネルを閉じる" : "操作パネルを開く"}>
+          {open ? "◀" : "▶"}
+        </button>
+        {/* inert：閉じている間は、中の入力欄にキーボードやスクリーンリーダーで入れないようにする */}
+        <div id="panel-body" className="side-body" inert={!open}>
         <h2>1. 場所を決める</h2>
         <button className="ghost wide" onClick={useGeo}>📍 現在地を使う</button>
         <label htmlFor="q">住所で探す</label>
@@ -150,7 +159,7 @@ export default function PestMap() {
         </div>
         <ul className="results">
           {hits.map((h, i) => (
-            <li key={i}><button onClick={() => { setDraft(h.lat, h.lng); setHits([]); }}>{h.title}</button></li>
+            <li key={i}><button onClick={() => { setDraft(h.lat, h.lng); setHits([]); closeOnMobile(); }}>{h.title}</button></li>
           ))}
         </ul>
         <p className="hint">地図をクリックしても指定できます。黒いピンはドラッグで微調整できます。</p>
@@ -170,6 +179,7 @@ export default function PestMap() {
           <option value={7}>直近7日</option><option value={30}>直近30日</option><option value={90}>直近90日</option><option value={0}>すべて</option>
         </select>
         <p className="hint">表示中：{shown}件</p>
+      </div>
       </aside>
       <div ref={box} className="map" />
       {msg && <div className="toast" role="status">{msg}</div>}
