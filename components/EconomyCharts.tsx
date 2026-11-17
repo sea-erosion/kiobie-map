@@ -10,11 +10,11 @@ function Bar({ labels, data, label, color }: { labels: string[]; data: number[];
     const c = new Chart(ref.current!, {
       type: "bar",
       data: { labels, datasets: [{ label, data, backgroundColor: color }] },
-      options: { plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
+      options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { y: { beginAtZero: true } } },
     });
     return () => c.destroy();
   }, [labels.join(), data.join()]); // eslint-disable-line react-hooks/exhaustive-deps
-  return <canvas ref={ref} height={130} aria-label={label} />;
+  return <div className="canvasbox"><canvas ref={ref} aria-label={label} /></div>;
 }
 
 export default function EconomyCharts() {
