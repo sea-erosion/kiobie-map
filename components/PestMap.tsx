@@ -71,7 +71,7 @@ export default function PestMap() {
   // ② DBから投稿を読む
   const load = useCallback(async () => {
     const { data, error } = await supabase.from("sightings").select("*").order("created_at", { ascending: false }).limit(1000);
-    if (error) return toast("ピンの読み込みに失敗しました");
+    if (error) { console.error(error); return toast(`ピンの読み込みに失敗しました（${error.code ?? ""} ${error.message}）`); }
     setRows(data as Sighting[]);
   }, [toast]);
   useEffect(() => { load(); }, [load]);
@@ -133,7 +133,7 @@ export default function PestMap() {
       lng: Math.round(p.lng * 1000) / 1000,
       memo: memo.trim() || null,
     });
-    if (error) return toast("投稿に失敗しました");
+    if (error) { console.error(error); return toast(`投稿に失敗しました（${error.code ?? ""} ${error.message}）`); }
     lastPost.current = Date.now();
     setMemo(""); draft.current.remove(); draft.current = null;
     toast("ピンを立てました");
