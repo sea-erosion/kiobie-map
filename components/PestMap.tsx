@@ -1,9 +1,12 @@
 "use client";
 import { useCallback, useEffect, useRef, useState } from "react";
 import "leaflet/dist/leaflet.css";
+import "leaflet.markercluster/dist/MarkerCluster.css";
+import type {} from "leaflet.markercluster"; // 型だけ読み込む（本体はブラウザ側で読む）
+import { OITA_RINGS } from "@/lib/oita-area";
 import type { Map as LMap, Marker, LayerGroup } from "leaflet";
 import { supabase } from "@/lib/supabase";
-import { inOita, OITA_CENTER, STAGES, STAGE_SHORT, type Sighting, type Stage } from "@/lib/oita";
+import { inOita, OITA_CENTER, OITA_MAX_BOUNDS, STAGES, STAGE_SHORT, type Sighting, type Stage } from "@/lib/oita";
 
 type Leaflet = typeof import("leaflet");
 type GeoHit = { title: string; lat: number; lng: number };
@@ -35,7 +38,7 @@ export default function PestMap() {
 
   // 黒いピン（これから立てる場所）を置く
   const setDraft = useCallback((lat: number, lng: number, zoom?: number) => {
-    if (!inOita(lat, lng)) return toast("大分県内の場所を指定してください");
+    if (!inOita(lat, lng)) return toast("大分県内（地図の明るい範囲）を指定してください");
     if (draft.current) draft.current.setLatLng([lat, lng]);
     else {
       draft.current = L.current!.marker([lat, lng], { draggable: true, icon: icon("draft", "＋") }).addTo(map.current!);
@@ -52,15 +55,30 @@ export default function PestMap() {
     let dead = false;
     (async () => {
       const leaflet = (await import("leaflet")).default;
+      // markercluster は window.L を探して自分を登録するので、先に渡してから読み込む
+      (window as unknown as { L: typeof leaflet }).L = leaflet;
+      await import("leaflet.markercluster");
       if (dead || !box.current) return;
       L.current = leaflet;
-      const m = leaflet.map(box.current, { zoomControl: false, minZoom: 8, maxBounds: [[32.4, 130.5], [34.1, 132.5]] }).setView(OITA_CENTER, 9);
+      const m = leaflet.map(box.current, { zoomControl: false, minZoom: 8, maxBounds: OITA_MAX_BOUNDS, maxBoundsViscosity: 1 }).setView(OITA_CENTER, 9);
       // 国土地理院タイル（無料・キー不要）
       leaflet.tileLayer("https://cyberjapandata.gsi.go.jp/xyz/std/{z}/{x}/{y}.png", {
         maxZoom: 18, attribution: '<a href="https://maps.gsi.go.jp/development/ichiran.html">地理院タイル</a>',
       }).addTo(m);
+      // 県外を暗くして、投稿できる範囲（大分県）だけ明るく見せる
+      const world: [number, number][] = [[-85, -180], [-85, 180], [85, 180], [85, -180]];
+      leaflet.polygon([world, ...OITA_RINGS], { stroke: false, fillColor: "#1b1a22", fillOpacity: 0.45, interactive: false }).addTo(m);
+      leaflet.polygon(OITA_RINGS, { color: "#2d2140", weight: 2, dashArray: "6 4", fill: false, interactive: false }).addTo(m);
       leaflet.control.zoom({ position: "topright" }).addTo(m);
-      layer.current = leaflet.layerGroup().addTo(m);
+      // 近くのピン・同じ場所のピンを1つにまとめ、件数の数字を表示する
+      layer.current = leaflet.markerClusterGroup({
+        maxClusterRadius: 40,          // この距離（px）以内のピンをまとめる
+        showCoverageOnHover: false,
+        iconCreateFunction: (c) => {
+          const n = c.getChildCount();
+          return icon(n > 99 ? "count long" : "count", String(n));
+        },
+      }).addTo(m);
       m.on("click", (e) => setDraft(e.latlng.lat, e.latlng.lng, m.getZoom()));
       map.current = m;
       setReady(true);
@@ -127,12 +145,10 @@ export default function PestMap() {
     if (!draft.current) return toast("先に場所を指定してください");
     if (Date.now() - lastPost.current < 10000) return toast("連続投稿はできません。少し待ってください");
     const p = draft.current.getLatLng();
-    const { error } = await supabase.from("sightings").insert({
-      stage,
-      lat: Math.round(p.lat * 1000) / 1000, // 小数3桁＝約100m単位に丸めて保存（プライバシー対策）
-      lng: Math.round(p.lng * 1000) / 1000,
-      memo: memo.trim() || null,
-    });
+    // 小数3桁＝約100m単位に丸めて保存（プライバシー対策）。丸めたあとの位置で範囲を判定する
+    const lat = Math.round(p.lat * 1000) / 1000, lng = Math.round(p.lng * 1000) / 1000;
+    if (!inOita(lat, lng)) return toast("県境に近すぎて登録できません。少し内側に動かしてください");
+    const { error } = await supabase.from("sightings").insert({ stage, lat, lng, memo: memo.trim() || null });
     if (error) { console.error(error); return toast(`投稿に失敗しました（${error.code ?? ""} ${error.message}）`); }
     lastPost.current = Date.now();
     setMemo(""); draft.current.remove(); draft.current = null;
@@ -162,7 +178,7 @@ export default function PestMap() {
             <li key={i}><button onClick={() => { setDraft(h.lat, h.lng); setHits([]); closeOnMobile(); }}>{h.title}</button></li>
           ))}
         </ul>
-        <p className="hint">地図をクリックしても指定できます。黒いピンはドラッグで微調整できます。</p>
+        <p className="hint">地図をクリックしても指定できます。黒いピンはドラッグで微調整できます。地図の暗い部分（県外）には置けません。</p>
 
         <h2>2. 見かけたものを投稿</h2>
         <label htmlFor="stage">何を見かけた？</label>
@@ -178,7 +194,7 @@ export default function PestMap() {
         <select value={days} onChange={(e) => setDays(Number(e.target.value))} aria-label="表示期間">
           <option value={7}>直近7日</option><option value={30}>直近30日</option><option value={90}>直近90日</option><option value={0}>すべて</option>
         </select>
-        <p className="hint">表示中：{shown}件</p>
+        <p className="hint">表示中：{shown}件。数字のピンは、まとまっている件数です。タップすると拡大・展開できます。</p>
       </div>
       </aside>
       <div ref={box} className="map" />
