@@ -35,3 +35,8 @@ GitHub に上げて Vercel でインポート。Environment Variables に `.env.
 - Windows PowerShell: `$env:STATIC_EXPORT="1"; npm run build`
 
 注意：リポジトリ名が `ユーザー名.github.io` の場合は公開先がルートになるので、workflow の `NEXT_PUBLIC_BASE_PATH` の行を削除してください。
+
+## 投稿できる範囲（大分県の形）
+- アプリ側：`lib/oita-area.ts` の輪郭で判定。県外は暗く表示され、置けません。
+- データベース側：Supabase の SQL Editor で `supabase-boundary.sql` を1回実行すると、県外の投稿はDBが拒否します。
+- 輪郭は海岸線から約300m外側まで広げてあります（海岸付近のGPSのずれ対策）。
