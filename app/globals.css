@@ -33,10 +33,14 @@ button.wide{width:100%}
 .hint{font-size:.85rem;color:var(--sub);margin:6px 0 0}
 .toast{position:fixed;left:50%;bottom:calc(22px + env(safe-area-inset-bottom));max-width:90vw;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:8px;z-index:2000}
 .pin{width:36px;height:36px;border-radius:50% 50% 50% 0;transform:rotate(-45deg);border:2px solid #fff;box-shadow:0 1px 4px rgba(0,0,0,.4);display:flex;align-items:center;justify-content:center;background:var(--kiobi)}
-.pin span{transform:rotate(45deg);font-size:18px;line-height:1}
+.pin{color:var(--main)}
+.pin span{transform:rotate(45deg);font-size:18px;line-height:1;display:flex}
 .pin.count span{font-size:15px;font-weight:700;color:var(--main)}
 .pin.count.long span{font-size:12px}
 .pin.draft{background:#222;color:#fff}
+.icon{display:inline-flex;vertical-align:middle;line-height:0}
+.iconbtn{display:flex;align-items:center;justify-content:center;gap:8px}
+.toggle{display:flex;align-items:center;justify-content:center}
 
 .page{max-width:860px;margin:0 auto;padding:28px 18px 60px}
 .page h1{font-size:1.6rem;margin:0 0 8px}
@@ -49,9 +53,12 @@ button.wide{width:100%}
 .big{font-size:1.4rem;font-weight:700}
 @media (max-width:760px){
   :root{--nav-h:92px}
-  .nav{padding:4px 14px;gap:0 16px}
-  .nav strong{flex:0 0 100%;margin:0;line-height:34px}
-  .nav a{display:inline-flex;align-items:center;height:44px}
+  .nav{padding:4px 12px;gap:0 clamp(8px,3vw,16px)}
+  /* 文字サイズを画面幅に合わせて縮め、320pxでもリンクが1行に収まるようにする */
+  .nav strong{flex:0 0 100%;margin:0;line-height:34px;white-space:nowrap;font-size:clamp(.9rem,4.6vw,1rem)}
+  .nav a{display:inline-flex;align-items:center;height:44px;white-space:nowrap;font-size:clamp(.78rem,3.8vw,1rem)}
+  .side{width:min(340px,80vw)}                              /* 狭い画面で地図が見える幅を少し残す */
+  .leaflet-top.leaflet-right{margin-top:60px}               /* ズームボタンを、開閉ボタンと重ならない位置へ下げる */
   .page{padding:20px 14px 48px}
   .page h1{font-size:1.4rem}
   .chartbox{padding:12px}
