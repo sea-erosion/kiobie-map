@@ -4,6 +4,8 @@ import "leaflet/dist/leaflet.css";
 import "leaflet.markercluster/dist/MarkerCluster.css";
 import type {} from "leaflet.markercluster"; // 型だけ読み込む（本体はブラウザ側で読む）
 import { OITA_RINGS } from "@/lib/oita-area";
+import { svgString } from "@/lib/icons";
+import Icon from "@/components/Icon";
 import type { Map as LMap, Marker, LayerGroup } from "leaflet";
 import { supabase } from "@/lib/supabase";
 import { inOita, OITA_CENTER, OITA_MAX_BOUNDS, STAGES, STAGE_SHORT, type Sighting, type Stage } from "@/lib/oita";
@@ -33,15 +35,15 @@ export default function PestMap() {
 
   const toast = useCallback((t: string) => { setMsg(t); setTimeout(() => setMsg(""), 3000); }, []);
 
-  const icon = (cls: string, txt: string) =>
-    L.current!.divIcon({ className: "", html: `<div class="pin ${cls}"><span>${txt}</span></div>`, iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -34] });
+  const icon = (cls: string, inner: string) =>
+    L.current!.divIcon({ className: "", html: `<div class="pin ${cls}"><span>${inner}</span></div>`, iconSize: [36, 36], iconAnchor: [18, 36], popupAnchor: [0, -34] });
 
   // 黒いピン（これから立てる場所）を置く
   const setDraft = useCallback((lat: number, lng: number, zoom?: number) => {
     if (!inOita(lat, lng)) return toast("大分県内（地図の明るい範囲）を指定してください");
     if (draft.current) draft.current.setLatLng([lat, lng]);
     else {
-      draft.current = L.current!.marker([lat, lng], { draggable: true, icon: icon("draft", "＋") }).addTo(map.current!);
+      draft.current = L.current!.marker([lat, lng], { draggable: true, icon: icon("draft", svgString("plus", 20)) }).addTo(map.current!);
       draft.current.on("dragend", () => {
         const p = draft.current!.getLatLng();
         if (!inOita(p.lat, p.lng)) { toast("県外には置けません"); draft.current!.setLatLng([lat, lng]); }
@@ -102,11 +104,13 @@ export default function PestMap() {
     rows.filter((r) => new Date(r.created_at).getTime() >= since).forEach((r) => {
       // メモ欄に変なHTMLを書かれても動かないよう、textContent で組み立てる
       const el = document.createElement("div");
-      const h = document.createElement("strong"); h.textContent = `🐛 ${STAGE_SHORT[r.stage]}`;
+      const h = document.createElement("strong");
+      const ic = document.createElement("span"); ic.className = "icon"; ic.innerHTML = svgString("caterpillar", 18); // 固定のSVGだけなので安全
+      h.append(ic, STAGE_SHORT[r.stage]);
       const d = document.createElement("div"); d.textContent = new Date(r.created_at).toLocaleString("ja-JP");
       el.append(h, d);
       if (r.memo) { const n = document.createElement("div"); n.textContent = r.memo; el.append(n); }
-      L.current!.marker([r.lat, r.lng], { icon: icon("", "🐛") }).bindPopup(el).addTo(layer.current!);
+      L.current!.marker([r.lat, r.lng], { icon: icon("", svgString("caterpillar", 22)) }).bindPopup(el).addTo(layer.current!);
     });
   }, [rows, days, ready]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -162,12 +166,12 @@ export default function PestMap() {
     <div className="app">
       <aside id="panel" className={"side" + (open ? "" : " closed")}>
         <button className="toggle" onClick={() => setOpen(!open)} aria-expanded={open} aria-controls="panel-body" aria-label={open ? "操作パネルを閉じる" : "操作パネルを開く"}>
-          {open ? "◀" : "▶"}
+          <Icon name={open ? "chevronLeft" : "chevronRight"} size={24} />
         </button>
         {/* inert：閉じている間は、中の入力欄にキーボードやスクリーンリーダーで入れないようにする */}
         <div id="panel-body" className="side-body" inert={!open}>
         <h2>1. 場所を決める</h2>
-        <button className="ghost wide" onClick={useGeo}>📍 現在地を使う</button>
+        <button className="ghost wide iconbtn" onClick={useGeo}><Icon name="locate" size={20} />現在地を使う</button>
         <label htmlFor="q">住所で探す</label>
         <div className="row">
           <input id="q" value={q} placeholder="例：大分市府内町" onChange={(e) => setQ(e.target.value)} onKeyDown={(e) => e.key === "Enter" && search()} />
